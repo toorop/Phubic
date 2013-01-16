@@ -14,7 +14,7 @@
 
  */
 
-class phubic
+class Phubic
 {
 
     private $hubicLogin;
