@@ -1,5 +1,7 @@
 <?php
 /*
+     Copyright 2013 Stéphane Depierrepont (aka Toorop) toorop@toorop.fr
+
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
     the License at
@@ -164,13 +166,17 @@ class Phubic
         }
         curl_close($ch);
         $t= json_decode($r);
+        if($t===false)
+            throw new \Exception('Unexpected response returned by Hubic server on getSetting. Returned : '.(string)$r);
+         if(!isset($t->answer) || !isset($t->answer->statuts))
+             throw new \Exception('Unexpected response returned by Hubic server on getSetting. Returned : '.(string)$r);
         if($t->answer->status !==200)
             throw new \Exception('Bad response code returned by Hubic server on getSetting. Returned : '.$t->answer->status.' Expected : 200');
         if(isset($t->answer->settings->hubic)) {
             $this->hubicSettings=$t->answer->settings->hubic;
             return $this->hubicSettings;
         }
-        throw new \Exception('No settings returned by Hubic server. Response(JSON) : '.$r);
+        throw new \Exception('No settings returned by Hubic server. Response(JSON) : '.(string)$r);
     }
 
     /**
@@ -183,7 +189,6 @@ class Phubic
      */
     public function listFolder($folder = '/', $container = 'default')
     {
-
         /* Curl Init */
         $ch = curl_init("https://app.hubic.me/v2/actions/ajax/hubic-browser.php");
         /* Cookies */
@@ -216,7 +221,7 @@ class Phubic
                     if (isset($root[$p]['items'])) {
                         $root = $root[$p]['items'];
                     } else {
-                        throw new \Exception('No such folder ' . $folder);
+                        throw new \Exception('No such folder ' . $folder,404);
                     }
                 }
             }
@@ -244,6 +249,10 @@ class Phubic
      * @param string $container
      * @return bool
      * @throws Exception
+     *
+     * @todo : create folder(s) if they doesn't exist
+     *
+     *
      */
     public function upload($src = '', $dest = '', $container = 'default')
     {
@@ -320,34 +329,37 @@ class Phubic
         return true;
     }
 
-
-    public function createFolder($folder,$container='default'){
-
-        /**
-            headers = {'User-Agent': userAgent, 'Origin': 'https://app.hubic.me'}
-            payload = {'action': 'create', 'folder' : folder, 'container' : 'default', 'name': name}
-            r = sess.post("https://app.hubic.me/v2/actions/ajax/hubic-browser.php", data=payload, headers=headers)
-         */
-
-
-        if(!$folder)
-            throw new \Exception('Method createFolder need parameter $folder');
+    /**
+     * Create folder recursively
+     *
+     * @param string $folder
+     * @param string $container
+     * @return bool
+     * @throws Exception
+     */
+    public function createFolder($folder='',$container='default'){
+        if($folder=='')
+            throw new \Exception('Method createFolder needs parameter $folder');
         $folder=trim($folder);
 
+        // clean ending / if present
         if(substr($folder,strlen($folder)-1,1)=='/')
-            $folder=substr($folder,0,strlen($folder)-1);
-
+            $folder=substr($folder,0,strlen($folder)-1);;
+        if($folder==='') return true;
+        // exists ?
+        if($this->hubicFolderExists($folder)) return true;
 
         $p = explode("/",$folder);
+        // @todo : limit sub folder to avoid long exec
+        // if parent folder doesn't exists create it (recursively)
+        $parent=implode("/",array_slice($p,0,count($p)-1));
+        if($this->hubicFolderExists($parent)===false){
+            $this->createFolder($parent,$container);
+        }
         // name
-        $name=$p[count($p)-1];
+        $postName=$p[count($p)-1];
         // folder
-        $folder=substr($folder,0,strlen($folder)-strlen($name)-1);
-
-
-
-
-
+        $postFolder=substr($folder,0,strlen($folder)-strlen($postName)-1);
 
         /* Init Curl */
         $ch = curl_init("https://app.hubic.me/v2/actions/ajax/hubic-browser.php");
@@ -360,23 +372,52 @@ class Phubic
         $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Post data */
-        $post = array('action' => 'create', 'folder' => $folder, 'container' => urlencode($container), 'name'=> urlencode($name));
-
+        $post = array('action' => 'create', 'folder' => $postFolder, 'container' => urlencode($container), 'name'=> urlencode($postName));
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 
         /* Verbosity (debug) */
-        curl_setopt($ch, CURLOPT_VERBOSE, 1);
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
         /* Go go go !!! */
         $r = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($httpCode !== 200) {
-            throw new \Exception('Returned HTTP code : ' . $httpCode);
-        }
-        curl_close($ch);
-        var_dump($r);
 
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($httpCode !== 200) {
+            throw new \Exception('Bad HTTP code returned by Hubic server on createFolder. Returned : '.$httpCode.' Expected : 200');
+        }
+
+        $t= json_decode($r);
+        if($t===false) // not a json response as expected
+            throw new \Exception('Unexpected response returned by Hubic server on createFolder. Returned : '.(string)$r);
+        if(!isset($t->answer) || !isset($t->answer->status))
+            throw new \Exception('Unexpected response returned by Hubic server on createFolder. Returned : '.(string)$r);
+        if($t->answer->status !==201)
+            throw new \Exception('Bad response code returned by Hubic server on createFolder. Returned : '.$t->answer->status.' Expected : 201');
+
+        return true;
     }
 
+
+    /**
+     * Check if a given folder exists
+     *
+     * @param string $folder
+     * @return bool
+     * @throws Exception
+     * @throws Exception
+     */
+    public function hubicFolderExists($folder=''){
+        if ($folder==='')
+            throw new \Exception('Method hubicFolderExists needs parameter $folder');
+        try {
+            $r=$this->listFolder($folder);
+        } catch (\Exception $e){
+            if ($e->getCode()===404)
+                return false;
+            throw $e;
+        }
+        return true;
+    }
 
 
     /**
@@ -418,6 +459,10 @@ class Phubic
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') return '\\';
         return '/';
       }
+
+
+
+
 
 
 }
