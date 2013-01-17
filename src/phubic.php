@@ -40,13 +40,13 @@ class Phubic
         $this->tempDir = trim($config['tempDir']);
         if (!file_exists($this->tempDir))
             throw new \Exception('tempDir parameter ' . $this->tempDir . ' is not an existing directory');
-        if (!touch($this->tempDir .$this->getPathSeparator().'test'))
+        if (!touch($this->tempDir . $this->getPathSeparator() . 'test'))
             throw new \Exception('tempDir ' . $this->tempDir . ' is not writable');
-        unlink($this->tempDir . $this->getPathSeparator(). 'test');
+        unlink($this->tempDir . $this->getPathSeparator() . 'test');
 
         // user agent
         # $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.101 Safari/537.11';
-        $this->userAgent = 'Phubic (dev version)  more info : https://github.com/Toorop/Phubic' ;
+        $this->userAgent = 'Phubic (dev version)  more info : https://github.com/Toorop/Phubic';
 
 
         unset($config);
@@ -91,19 +91,19 @@ class Phubic
         $resp = curl_exec($ch);
 
         $error = curl_error($ch);
-        if($error)
+        if ($error)
             throw new \Exception($error);
 
         // HTTP_CODE must be 302 (redirect to location: /v2/)
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($httpCode!==302)
-            throw new \Exception('Bad HTTP code returned by Hubic server on login. Returned : '.$httpCode.' Expected : 302');
+        if ($httpCode !== 302)
+            throw new \Exception('Bad HTTP code returned by Hubic server on login. Returned : ' . $httpCode . ' Expected : 302');
         curl_close($ch);
 
         /* Cookie HUBIC_ACTION_RETURN ? */
         $cookies = $this->getCookies();
         if (array_key_exists('HUBIC_ACTION_RETURN', $cookies)) {
-            $r=json_decode($cookies['HUBIC_ACTION_RETURN']);
+            $r = json_decode($cookies['HUBIC_ACTION_RETURN']);
             if (isset($r->answer->login->message))
                 throw new \Exception($r->answer->login->message);
             throw new \Exception('Login failed');
@@ -162,21 +162,21 @@ class Phubic
         $r = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if ($httpCode !== 200) {
-            throw new \Exception('Bad HTTP code returned by Hubic server on getSetting. Returned : '.$httpCode.' Expected : 200');
+            throw new \Exception('Bad HTTP code returned by Hubic server on getSetting. Returned : ' . $httpCode . ' Expected : 200');
         }
         curl_close($ch);
-        $t= json_decode($r);
-        if($t===false)
-            throw new \Exception('Unexpected response returned by Hubic server on getSetting. Returned : '.(string)$r);
-         if(!isset($t->answer) || !isset($t->answer->statuts))
-             throw new \Exception('Unexpected response returned by Hubic server on getSetting. Returned : '.(string)$r);
-        if($t->answer->status !==200)
-            throw new \Exception('Bad response code returned by Hubic server on getSetting. Returned : '.$t->answer->status.' Expected : 200');
-        if(isset($t->answer->settings->hubic)) {
-            $this->hubicSettings=$t->answer->settings->hubic;
+        $t = json_decode($r);
+        if ($t === false)
+            throw new \Exception('Unexpected response returned by Hubic server on getSetting. Returned : ' . (string)$r);
+        if (!isset($t->answer) || !isset($t->answer->statuts))
+            throw new \Exception('Unexpected response returned by Hubic server on getSetting. Returned : ' . (string)$r);
+        if ($t->answer->status !== 200)
+            throw new \Exception('Bad response code returned by Hubic server on getSetting. Returned : ' . $t->answer->status . ' Expected : 200');
+        if (isset($t->answer->settings->hubic)) {
+            $this->hubicSettings = $t->answer->settings->hubic;
             return $this->hubicSettings;
         }
-        throw new \Exception('No settings returned by Hubic server. Response(JSON) : '.(string)$r);
+        throw new \Exception('No settings returned by Hubic server. Response(JSON) : ' . (string)$r);
     }
 
     /**
@@ -210,18 +210,21 @@ class Phubic
         if ($httpCode !== 200) {
             throw new \Exception('Bad HTTP code recieved : ' . $httpCode);
         }
-
         $r = json_decode($resp, true, 512);
+        // get fullCacheMode. If not fullCacheMode we are at root
+        $fullCacheMode = $r['answer']['hubic']['fullCacheMode'];
 
         $root = $r['answer']['hubic']['list'][$container]['items'];
-        if ($folder !== '/') {
-            $parts = explode('/', $folder);
-            foreach ($parts as $p) {
-                if ($p and strlen($p) > 0) {
-                    if (isset($root[$p]['items'])) {
-                        $root = $root[$p]['items'];
-                    } else {
-                        throw new \Exception('No such folder ' . $folder,404);
+        if ($fullCacheMode) {
+            if ($folder !== '/') {
+                $parts = explode('/', $folder);
+                foreach ($parts as $p) {
+                    if ($p and strlen($p) > 0) {
+                        if (isset($root[$p]['items'])) {
+                            $root = $root[$p]['items'];
+                        } else {
+                            throw new \Exception('No such folder ' . $folder, 404);
+                        }
                     }
                 }
             }
@@ -337,29 +340,31 @@ class Phubic
      * @return bool
      * @throws Exception
      */
-    public function createFolder($folder='',$container='default'){
-        if($folder=='')
+    public function createFolder($folder = '', $container = 'default')
+    {
+        if ($folder == '')
             throw new \Exception('Method createFolder needs parameter $folder');
-        $folder=trim($folder);
+        $folder = trim($folder);
 
         // clean ending / if present
-        if(substr($folder,strlen($folder)-1,1)=='/')
-            $folder=substr($folder,0,strlen($folder)-1);;
-        if($folder==='') return true;
+        if (substr($folder, strlen($folder) - 1, 1) == '/')
+            $folder = substr($folder, 0, strlen($folder) - 1);
+        ;
+        if ($folder === '') return true;
         // exists ?
-        if($this->hubicFolderExists($folder)) return true;
+        if ($this->hubicFolderExists($folder)) return true;
 
-        $p = explode("/",$folder);
+        $p = explode("/", $folder);
         // @todo : limit sub folder to avoid long exec
         // if parent folder doesn't exists create it (recursively)
-        $parent=implode("/",array_slice($p,0,count($p)-1));
-        if($this->hubicFolderExists($parent)===false){
-            $this->createFolder($parent,$container);
+        $parent = implode("/", array_slice($p, 0, count($p) - 1));
+        if ($this->hubicFolderExists($parent) === false) {
+            $this->createFolder($parent, $container);
         }
         // name
-        $postName=$p[count($p)-1];
+        $postName = $p[count($p) - 1];
         // folder
-        $postFolder=substr($folder,0,strlen($folder)-strlen($postName)-1);
+        $postFolder = substr($folder, 0, strlen($folder) - strlen($postName) - 1);
 
         /* Init Curl */
         $ch = curl_init("https://app.hubic.me/v2/actions/ajax/hubic-browser.php");
@@ -372,7 +377,7 @@ class Phubic
         $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Post data */
-        $post = array('action' => 'create', 'folder' => $postFolder, 'container' => urlencode($container), 'name'=> urlencode($postName));
+        $post = array('action' => 'create', 'folder' => $postFolder, 'container' => urlencode($container), 'name' => urlencode($postName));
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 
         /* Verbosity (debug) */
@@ -383,16 +388,16 @@ class Phubic
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($httpCode !== 200) {
-            throw new \Exception('Bad HTTP code returned by Hubic server on createFolder. Returned : '.$httpCode.' Expected : 200');
+            throw new \Exception('Bad HTTP code returned by Hubic server on createFolder. Returned : ' . $httpCode . ' Expected : 200');
         }
 
-        $t= json_decode($r);
-        if($t===false) // not a json response as expected
-            throw new \Exception('Unexpected response returned by Hubic server on createFolder. Returned : '.(string)$r);
-        if(!isset($t->answer) || !isset($t->answer->status))
-            throw new \Exception('Unexpected response returned by Hubic server on createFolder. Returned : '.(string)$r);
-        if($t->answer->status !==201)
-            throw new \Exception('Bad response code returned by Hubic server on createFolder. Returned : '.$t->answer->status.' Expected : 201');
+        $t = json_decode($r);
+        if ($t === false) // not a json response as expected
+            throw new \Exception('Unexpected response returned by Hubic server on createFolder. Returned : ' . (string)$r);
+        if (!isset($t->answer) || !isset($t->answer->status))
+            throw new \Exception('Unexpected response returned by Hubic server on createFolder. Returned : ' . (string)$r);
+        if ($t->answer->status !== 201)
+            throw new \Exception('Bad response code returned by Hubic server on createFolder. Returned : ' . $t->answer->status . ' Expected : 201');
 
         return true;
     }
@@ -406,13 +411,14 @@ class Phubic
      * @throws Exception
      * @throws Exception
      */
-    public function hubicFolderExists($folder=''){
-        if ($folder==='')
+    public function hubicFolderExists($folder = '')
+    {
+        if ($folder === '')
             throw new \Exception('Method hubicFolderExists needs parameter $folder');
         try {
-            $r=$this->listFolder($folder);
-        } catch (\Exception $e){
-            if ($e->getCode()===404)
+            $r = $this->listFolder($folder);
+        } catch (\Exception $e) {
+            if ($e->getCode() === 404)
                 return false;
             throw $e;
         }
@@ -448,21 +454,18 @@ class Phubic
     */
     private function getCookiesPathFile()
     {
-        return $this->tempDir .$this->getPathSeparator().'cookies.txt';
+        return $this->tempDir . $this->getPathSeparator() . 'cookies.txt';
     }
 
     /**
      * Return path separator
      * @return string
      */
-    private function getPathSeparator(){
+    private function getPathSeparator()
+    {
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') return '\\';
         return '/';
-      }
-
-
-
-
+    }
 
 
 }
