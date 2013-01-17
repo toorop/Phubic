@@ -43,7 +43,9 @@ class Phubic
         unlink($this->tempDir . $this->getPathSeparator(). 'test');
 
         // user agent
-        $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.101 Safari/537.11';
+        # $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.101 Safari/537.11';
+        $this->userAgent = 'Phubic (dev version)  more info : https://github.com/Toorop/Phubic' ;
+
 
         unset($config);
 
@@ -162,6 +164,14 @@ class Phubic
 
     }
 
+    /**
+     * List folder
+     *
+     * @param string $folder
+     * @param string $container
+     * @return mixed
+     * @throws Exception
+     */
     public function listFolder($folder = '/', $container = 'default')
     {
 
@@ -217,11 +227,19 @@ class Phubic
         return $root;
     }
 
-
+    /**
+     * Upload
+     *
+     * @param string $src
+     * @param string $dest
+     * @param string $container
+     * @return bool
+     * @throws Exception
+     */
     public function upload($src = '', $dest = '', $container = 'default')
     {
 
-        if ($src === '' || $dest === '') throw new \Exception("Upload need src and dest parameteres");
+        if ($src === '' || $dest === '') throw new \Exception("Upload need src and dest parameters");
         $src = trim($src); // clean & cast
         $dest = trim($dest); // itoo
         if (!file_exists($src)) throw new \Exception('File ' . $src . ' not found');
@@ -233,7 +251,6 @@ class Phubic
         finfo_close($finfo);
         // size
         $size = filesize($src);
-
 
         /* Transfert */
         $url = "http://app.hubic.me/v2/actions/ajax/hubic-browser.php";
@@ -290,7 +307,67 @@ class Phubic
         // is filesize OK ? (=> simili integrity check)
         if ($r->answer->upload->size !== $size)
             throw new \Exception('Integrity check failed, uploaded filesize (' . $r->answer->upload->size . ') does not match with original size (' . $size . ')');
+
+        return true;
     }
+
+
+    public function createFolder($folder,$container='default'){
+
+        /**
+            headers = {'User-Agent': userAgent, 'Origin': 'https://app.hubic.me'}
+            payload = {'action': 'create', 'folder' : folder, 'container' : 'default', 'name': name}
+            r = sess.post("https://app.hubic.me/v2/actions/ajax/hubic-browser.php", data=payload, headers=headers)
+         */
+
+
+        if(!$folder)
+            throw new \Exception('Method createFolder need parameter $folder');
+        $folder=trim($folder);
+
+        if(substr($folder,strlen($folder)-1,1)=='/')
+            $folder=substr($folder,0,strlen($folder)-1);
+
+
+        $p = explode("/",$folder);
+        // name
+        $name=$p[count($p)-1];
+        // folder
+        $folder=substr($folder,0,strlen($folder)-strlen($name)-1);
+
+
+
+
+
+
+        /* Init Curl */
+        $ch = curl_init("https://app.hubic.me/v2/actions/ajax/hubic-browser.php");
+        /* Cookies */
+        $cookiesFile = $this->getCookiesPathFile();
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        /* Header */
+        $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        /* Post data */
+        $post = array('action' => 'create', 'folder' => $folder, 'container' => urlencode($container), 'name'=> urlencode($name));
+
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+
+        /* Verbosity (debug) */
+        curl_setopt($ch, CURLOPT_VERBOSE, 1);
+        /* Go go go !!! */
+        $r = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($httpCode !== 200) {
+            throw new \Exception('Returned HTTP code : ' . $httpCode);
+        }
+        curl_close($ch);
+        var_dump($r);
+
+    }
+
 
 
     /**
