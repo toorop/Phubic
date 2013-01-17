@@ -25,7 +25,7 @@ class Phubic
 
     private $userAgent;
 
-    private $hubicSettings;
+    private $hubicSettings=false;
 
     public function __construct($config = array())
     {
@@ -146,6 +146,10 @@ class Phubic
      */
     public function getSettings()
     {
+
+        if($this->hubicSettings)
+            return $this->hubicSettings;
+
         /* Init Curl */
         $ch = curl_init("https://app.hubic.me/v2/actions/ajax/getSettings.php");
         /* Cookies */
@@ -168,7 +172,7 @@ class Phubic
         $t = json_decode($r);
         if ($t === false)
             throw new \Exception('Unexpected response returned by Hubic server on getSetting. Returned : ' . (string)$r);
-        if (!isset($t->answer) || !isset($t->answer->statuts))
+        if (!isset($t->answer) || !isset($t->answer->status))
             throw new \Exception('Unexpected response returned by Hubic server on getSetting. Returned : ' . (string)$r);
         if ($t->answer->status !== 200)
             throw new \Exception('Bad response code returned by Hubic server on getSetting. Returned : ' . $t->answer->status . ' Expected : 200');
