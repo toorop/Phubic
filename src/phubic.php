@@ -84,24 +84,28 @@ class Phubic
         $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Verbosity */
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        curl_setopt($ch, CURLOPT_VERBOSE, 1);
         /* Go go go !!! */
         $resp = curl_exec($ch);
 
-        /*$error = curl_error($ch);
-        $info = curl_getinfo($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        var_dump($resp,$error,$info,$httpCode);*/
+        $error = curl_error($ch);
+        if($error)
+            throw new \Exception($error);
 
+        // HTTP_CODE must be 302 (redirect to location: /v2/)
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($httpCode!==302)
+            throw new \Exception('Bad HTTP code returned by Hubic server on login. Returned : '.$httpCode.' Expected : 302');
         curl_close($ch);
 
-        $cookies = $this->getCookies();
-
         /* Cookie HUBIC_ACTION_RETURN ? */
+        $cookies = $this->getCookies();
         if (array_key_exists('HUBIC_ACTION_RETURN', $cookies)) {
+            $r=json_decode($cookies['HUBIC_ACTION_RETURN']);
+            if (isset($r->answer->login->message))
+                throw new \Exception($r->answer->login->message);
             throw new \Exception('Login failed');
         }
-
     }
 
     /**
@@ -156,12 +160,11 @@ class Phubic
         $r = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if ($httpCode !== 200) {
-            throw new \Exception('Returned HTTP code : ' . $httpCode);
+            throw new \Exception('Bad HTTP code returned by Hubic server on getSetting. Returned : '.$httpCode.' Expected : 200');
         }
         curl_close($ch);
         $this->hubicSettings = json_decode($r);
         return $this->hubicSettings;
-
     }
 
     /**
