@@ -84,7 +84,7 @@ class Phubic
         $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Verbosity */
-        curl_setopt($ch, CURLOPT_VERBOSE, 1);
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
         /* Go go go !!! */
         $resp = curl_exec($ch);
 
@@ -139,7 +139,7 @@ class Phubic
     /**
      * Get Settings
      *
-     * @return mixed
+     * @return object settings
      * @throws Exception
      */
     public function getSettings()
@@ -163,8 +163,14 @@ class Phubic
             throw new \Exception('Bad HTTP code returned by Hubic server on getSetting. Returned : '.$httpCode.' Expected : 200');
         }
         curl_close($ch);
-        $this->hubicSettings = json_decode($r);
-        return $this->hubicSettings;
+        $t= json_decode($r);
+        if($t->answer->status !==200)
+            throw new \Exception('Bad response code returned by Hubic server on getSetting. Returned : '.$t->answer->status.' Expected : 200');
+        if(isset($t->answer->settings->hubic)) {
+            $this->hubicSettings=$t->answer->settings->hubic;
+            return $this->hubicSettings;
+        }
+        throw new \Exception('No settings returned by Hubic server. Response(JSON) : '.$r);
     }
 
     /**
