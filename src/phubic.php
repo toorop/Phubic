@@ -308,10 +308,8 @@ class Phubic
         curl_setopt($ch, CURLOPT_INFILESIZE, $size);
         // Go
         $resp = curl_exec($ch);
-        $error = curl_error($ch);
+        #$error = curl_error($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        var_dump($resp, $error, $httpCode);
         curl_close($ch);
         fclose($fp);
 
@@ -430,6 +428,102 @@ class Phubic
     }
 
 
+    /**
+     * Download file from Hubic
+     *
+     * @param string $file
+     * @param string $saveToFolder
+     * @param string $container
+     * @param bool $stream
+     * @return bool true
+     * @throws Exception
+     */
+    public function downloadFile($file = '', $saveToFolder = '', $container = 'default', $stream = false)
+    {
+        if ($file === '')
+            throw new \Exception('Method downloadFile needs parameter $file');
+
+        if ($saveToFolder === '')
+            throw new \Exception('Method downloadFile needs parameter $saveAs');
+        if (!is_dir($saveToFolder))
+            throw new \Exception('Folder ' . $saveToFolder . ' does not exists');
+        if (!is_writable($saveToFolder))
+            throw new \Exception('Folder ' . $saveToFolder . ' is not writable');
+        // if last char is (back)slash remove it
+        $t = substr($saveToFolder, -1);
+        if (!ctype_alnum($t))
+            $saveToFolder = substr($saveToFolder, 0, strlen($saveToFolder) - 1);
+
+        // Get Hubic folder and name from $file
+        $p = explode('/', $file);
+        if ($p[count($p) - 1] === '')
+            array_pop($p);
+        $name = $p[count($p) - 1];
+        array_pop($p);
+        $folder = implode('/', $p);
+
+        // Get size of file
+        $r = $this->listFolder($folder, $container);
+        if (!array_key_exists($name, $r))
+            throw new \Exception('File ' . $file . ' not found on your Hubic.');
+        $size = $r[$name]['size'];
+        // type
+        $type = $r[$name]['type'];
+        // key (rand)
+        $key = (int)round(mt_rand() * time());
+        // sessionHash is needed
+        $s = $this->getSettings();
+
+        // https://app.hubic.me/v2/actions/ajax/hubic-browser.php?action=download&folder=/toorop/Tests/Folder2/Tests&container=default&name=mod_fcgid.c&key=126146434820&isFile=true&size=41777&type=&secret=113d0235ef265d1b239a4a3be3846ea3f3a47dcd1af67f14068b36e80225dafe
+        $url = 'https://app.hubic.me/v2/actions/ajax/hubic-browser.php';
+
+        // GET parameters as array for better readability
+        $get = array(
+            'action' => 'download',
+            'folder' => urlencode($folder),
+            'container' => urlencode($container),
+            'name' => urlencode($name),
+            'key' => $key,
+            'isFile' => 'true',
+            'size' => (string)$size,
+            'type' => urlencode($type),
+            'secret' => $s->sessionHash
+        );
+        $par = '';
+        foreach ($get as $k => $v) $par .= '&' . $k . '=' . $v;
+        $par = substr($par, 1);
+        $url .= '?' . $par;
+
+        /* Init Curl */
+        $ch = curl_init($url);
+        /* Cookies */
+        $cookiesFile = $this->getCookiesPathFile();
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        /* Header */
+        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        /* save to */
+        $saveTo=$saveToFolder.'/'.$name;
+        $fp = fopen($saveTo, 'w');
+        curl_setopt($ch, CURLOPT_FILE, $fp);
+
+        /* Verbosity (debug) */
+        curl_setopt($ch, CURLOPT_VERBOSE, 1);
+        /* Go go go !!! */
+        $r = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        fclose($fp);
+
+        if($httpCode!==200)
+            throw new Exception("Download Failed - Bad HTTP response from Hubic server - Expected 200 Recieved ".$httpCode);
+        if($r!==true)
+            throw new \Exception("Download failed - Hubic response is false");
+        return true;
+    }
 
     /**
      * Parse cookies file
@@ -468,8 +562,12 @@ class Phubic
      */
     private function getPathSeparator()
     {
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') return '\\';
-        return '/';
+        // NOTE : according to PHP doc Windows accept / as path separator
+        // @todo :  clean the code that use this method
+        return "/";
+
+        #if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') return '\\';
+        #return '/';
     }
 
 
