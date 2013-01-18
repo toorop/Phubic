@@ -96,13 +96,11 @@ class Phubic
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Verbosity */
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        /* Go go go !!! */
+        /* Go */
         $resp = curl_exec($ch);
-
         $error = curl_error($ch);
         if ($error)
             throw new \Exception($error);
-
         // HTTP_CODE must be 302 (redirect to location: /v2/)
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if ($httpCode !== 302)
@@ -266,7 +264,6 @@ class Phubic
      * @return bool
      * @throws Exception
      *
-     * @todo : create folder(s) if they doesn't exist
      * @todo : create folder(s) if they don't exist
      *
      *
@@ -324,7 +321,6 @@ class Phubic
         fclose($fp);
 
         if ($httpCode !== 200)
-            throw new \Exception('Error uploading ' . $src . ' - Hubic HTTP response code : ' . $httpCode, ' - Json response : ' . $resp);
             throw new \Exception('Error uploading ' . $src . ' - Hubic HTTP response code : ' . $httpCode. ' - Json response : ' . $resp);
 
         $r = json_decode($resp);
@@ -466,12 +462,7 @@ class Phubic
             $saveToFolder = substr($saveToFolder, 0, strlen($saveToFolder) - 1);
 
         // Get Hubic folder and name from $file
-        $p = explode('/', $file);
-        if ($p[count($p) - 1] === '')
-            array_pop($p);
-        $name = $p[count($p) - 1];
-        array_pop($p);
-        $folder = implode('/', $p);
+        list($folder,$name)=$this->getFolderAndNameFromFile($file);
 
         // Get size of file
         $r = $this->listFolder($folder, $container);
@@ -517,7 +508,7 @@ class Phubic
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
         /* save to */
-        $saveTo=$saveToFolder.'/'.$name;
+        $saveTo = $saveToFolder . '/' . $name;
         $fp = fopen($saveTo, 'w');
         curl_setopt($ch, CURLOPT_FILE, $fp);
 
@@ -529,14 +520,76 @@ class Phubic
         curl_close($ch);
         fclose($fp);
 
-        if($httpCode!==200)
-            throw new Exception("Download Failed - Bad HTTP response from Hubic server - Expected 200 Recieved ".$httpCode);
-        if($r!==true)
+        if ($httpCode !== 200)
+            throw new Exception("Download Failed - Bad HTTP response from Hubic server - Expected 200 Recieved " . $httpCode);
+        if ($r !== true)
             throw new \Exception("Download failed - Hubic response is false");
         return true;
     }
 
     /**
+     * Remove file
+     *
+     * @param $file
+     * @param string $container
+     * @return bool
+     * @throws Exception
+     */
+    public function removeFile($file,$container='default')
+    {
+        if (empty($file))
+            throw new \Exception('Method removeFile needs parameter $file');
+        $file = trim($file);
+
+        // get name and folder from $file
+        list($folder, $name) = $this->getFolderAndNameFromFile($file);
+
+        // file type
+        $r = $this->listFolder($folder, $container);
+        if (!array_key_exists($name, $r))
+            throw new \Exception('File ' . $file . ' not found on your Hubic.');
+        // type
+        $type = $r[$name]['type'];
+
+        /* Init Curl */
+        $ch = curl_init("https://app.hubic.me/v2/actions/ajax/hubic-browser.php");
+        /* Cookies */
+        $cookiesFile = $this->getCookiesPathFile();
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        /* Header */
+        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        /* Post data */
+        $post = array(
+            'action' => 'remove',
+            'folder' => $folder,
+            'container' => $container,
+            'name' => $name,
+            'isFile' => 'true',
+            'type' => $type
+        );
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+        /* Verbosity (debug) */
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        /* Go go go !!! */
+        $r = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if($httpCode!==200)
+            throw new Exception("Remove Failed - Bad HTTP response from Hubic server - Expected 200 Recieved " . $httpCode);
+        $j=json_decode($r);
+        if($j===false)
+            throw new Exception("Remove Failed - Bad response from Hubic server - Expected JSON formated string but get " .(string)$r);
+        if(!isset($j->answer) ||!isset($j->answer->status))
+            throw new Exception("Remove Failed - Bad JSON response from Hubic server : " .(string)$r);
+        if((int)$j->answer->status!==204)
+            throw new \Exception('Bad response code returned by Hubic server on removeFile. Returned : ' . $j->answer->status . ' Expected : 204');
+        return true;
+    }
+
     /**
      * Return file name and directory path
      * @param string $file
