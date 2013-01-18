@@ -37,9 +37,21 @@ $settings=$phubic->getSettings();
 var_dump($settings);
 
 /*
- * Upload
+ * Upload file
  */
 $phubic->upload('/local/path/to/file','/hubic/path/');
+
+/*
+ *  Download file
+ */
+if($hubic->downloadFile('/hubic/path/to/file','/local/path/))
+     echo "\n".$file.' downloaded !';
+
+*
+ *  Remove file
+ */
+if($hubic->removeFile('/hubic/path/to/file'))
+     echo "\n".$file.' removed !';
 
 /*
  * List Folder
@@ -47,9 +59,4 @@ $phubic->upload('/local/path/to/file','/hubic/path/');
 $l=$phubic->listFolder('/hubic/path/');
 var_dump($l);
 
-/*
- *  Download
- */
-if($hubic->downloadFile('/hubic/path/to/file','/local/path/))
-     echo "\n".$file.' downloaded !';
 ```
