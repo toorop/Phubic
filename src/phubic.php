@@ -25,7 +25,7 @@ class Phubic
 
     private $userAgent;
 
-    private $hubicSettings=false;
+    private $hubicSettings = false;
 
     public function __construct($config = array())
     {
@@ -83,7 +83,7 @@ class Phubic
         $post = array('sign-in-email' => $this->hubicLogin, 'sign-in-password' => $this->hubicPasswd, 'sign-in-action' => 'true');
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
         /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
+        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Verbosity */
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
@@ -126,7 +126,7 @@ class Phubic
         $post = array('action' => 'unload');
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
         /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
+        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Verbosity (debug) */
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
@@ -147,7 +147,7 @@ class Phubic
     public function getSettings()
     {
 
-        if($this->hubicSettings)
+        if ($this->hubicSettings)
             return $this->hubicSettings;
 
         /* Init Curl */
@@ -158,7 +158,7 @@ class Phubic
         curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
+        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Verbosity (debug) */
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
@@ -201,10 +201,10 @@ class Phubic
         curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         /* Post data */
-        $post = array('action' => 'get', 'folder' => urlencode($folder), 'container' => urlencode($container), 'init' => 'true');
+        $post = array('action' => 'get', 'folder' => $folder, 'container' => urlencode($container), 'init' => 'true');
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
         /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
+        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Verbosity */
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
@@ -378,7 +378,7 @@ class Phubic
         curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin https://app.hubic.me');
+        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Post data */
         $post = array('action' => 'create', 'folder' => $postFolder, 'container' => urlencode($container), 'name' => urlencode($postName));
@@ -428,6 +428,7 @@ class Phubic
         }
         return true;
     }
+
 
 
     /**

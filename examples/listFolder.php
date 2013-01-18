@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 Copyright 2013 Stéphane Depierrepont (aka Toorop) toorop@toorop.fr
 
