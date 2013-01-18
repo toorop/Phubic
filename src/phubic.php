@@ -267,6 +267,7 @@ class Phubic
      * @throws Exception
      *
      * @todo : create folder(s) if they doesn't exist
+     * @todo : create folder(s) if they don't exist
      *
      *
      */
