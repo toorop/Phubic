@@ -527,6 +527,28 @@ class Phubic
     }
 
     /**
+    /**
+     * Return file name and directory path
+     * @param string $file
+     * @return array
+     * @throws Exception
+     */
+    private function getFolderAndNameFromFile($file)
+    {
+        if (empty($file))
+            throw new \Exception('Method getFolderAndNameFromFile needs parameter $file');
+        $file=(string)$file;
+        $p = explode('/', $file);
+        if ($p[count($p) - 1] === '')
+            array_pop($p);
+        $name = $p[count($p) - 1];
+        array_pop($p);
+        $folder = implode('/', $p);
+        return array($folder,$name);
+    }
+
+
+    /**
      * Parse cookies file
      * @return array
      */
