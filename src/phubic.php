@@ -16,6 +16,15 @@
 
  */
 
+
+/*
+ * Todo :
+ *  method curlPost
+ *
+ *
+ *
+ */
+
 class Phubic
 {
 
