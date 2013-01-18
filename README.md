@@ -46,4 +46,10 @@ $phubic->upload('/local/path/to/file','/hubic/path/');
  */
 $l=$phubic->listFolder('/hubic/path/');
 var_dump($l);
+
+/*
+ *  Download
+ */
+if($hubic->downloadFile('/hubic/path/to/file','/local/path/))
+     echo "\n".$file.' downloaded !';
 ```
