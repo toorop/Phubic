@@ -315,6 +315,7 @@ class Phubic
 
         if ($httpCode !== 200)
             throw new \Exception('Error uploading ' . $src . ' - Hubic HTTP response code : ' . $httpCode, ' - Json response : ' . $resp);
+            throw new \Exception('Error uploading ' . $src . ' - Hubic HTTP response code : ' . $httpCode. ' - Json response : ' . $resp);
 
         $r = json_decode($resp);
         #unset($resp);
