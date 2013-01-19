@@ -19,7 +19,6 @@
 
 /*
  * Todo :
- *  method curlPost
  *      - method curlPost
  *      - publication
  *      - create (recursively) folder on upload
@@ -77,39 +76,24 @@ class Phubic
      */
     private function login()
     {
-
         $this->logout();
 
-        /* Init Curl */
-        $ch = curl_init("https://app.hubic.me/v2/actions/nasLogin.php");
-
-        /* Cookies */
+        // Cookies
         $cookiesFile = $this->getCookiesPathFile();
         // file exist ?
         if (!file_exists($cookiesFile)) {
             touch($cookiesFile);
         }
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        /* Post data */
+        // Post data
         $post = array('sign-in-email' => $this->hubicLogin, 'sign-in-password' => $this->hubicPasswd, 'sign-in-action' => 'true');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-        /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        /* Verbosity */
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        /* Go */
-        $resp = curl_exec($ch);
-        $error = curl_error($ch);
-        if ($error)
-            throw new Exception($error);
+
+        // Curl
+        $cr=$this->curlPost('https://app.hubic.me/v2/actions/nasLogin.php',$post);
+        if ($cr['error'])
+            throw new Exception('Login failed : '.$cr['$error']);
         // HTTP_CODE must be 302 (redirect to location: /v2/)
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($httpCode !== 302)
-            throw new Exception('Bad HTTP code returned by Hubic server on login. Returned : ' . $httpCode . ' Expected : 302');
-        curl_close($ch);
+        if ($cr['httpCode'] !== 302)
+            throw new Exception('Bad HTTP code returned by Hubic server on login. Returned : ' . $cr['httpCode']  . ' Expected : 302');
 
         /* Cookie HUBIC_ACTION_RETURN ? */
         $cookies = $this->getCookies();
@@ -128,25 +112,12 @@ class Phubic
     {
         /* Init Curl */
         $ch = curl_init("https://app.hubic.me/v2/actions/ajax/logoff.php");
-        /* Cookies */
-        $cookiesFile = $this->getCookiesPathFile();
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         /* Post data */
         $post = array('action' => 'unload');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-        /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        /* Verbosity (debug) */
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
         /* Go go go !!! */
-        curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($httpCode !== 200) throw new Exception('Logout Fail');
-        @unlink($cookiesFile);
+        $cr=$this->curlPost('https://app.hubic.me/v2/actions/ajax/logoff.php',$post);
+        if ($cr['httpCode'] !== 200) throw new Exception('Logout Fail');
+        @unlink($this->getCookiesPathFile());
     }
 
     /**
@@ -202,34 +173,33 @@ class Phubic
      * @return mixed
      * @throws Exception
      */
-    public function listFolder($folder = '/', $container = 'default')
+    public function listFolder($folder, $container = 'default')
     {
-        /* Curl Init */
-        $ch = curl_init("https://app.hubic.me/v2/actions/ajax/hubic-browser.php");
-        /* Cookies */
-        $cookiesFile = $this->getCookiesPathFile();
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        /* Post data */
-        $post = array('action' => 'get', 'folder' => $folder, 'container' => urlencode($container), 'init' => 'true');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-        /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        /* Verbosity */
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        /* Go go go !!! */
-        $resp = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($httpCode !== 200) {
-            throw new Exception('Bad HTTP code recieved : ' . $httpCode);
-        }
-        $r = json_decode($resp, true, 512);
-        // get fullCacheMode. If not fullCacheMode we are at root
-        $fullCacheMode = $r['answer']['hubic']['fullCacheMode'];
+        if (empty($folder))
+            $folder = '/';
+        $folder = (string)$folder;
 
-        $root = $r['answer']['hubic']['list'][$container]['items'];
+        if (empty($container))
+            $container = 'default';
+        $container = (string)$container;
+
+        // Post data
+        $post = array('action' => 'get', 'folder' => $folder, 'container' => urlencode($container), 'init' => 'true');
+
+        // Curl
+        $cr = $this->curlPost('https://app.hubic.me/v2/actions/ajax/hubic-browser.php', $post);
+        if ($cr['httpCode'] !== 200) {
+            throw new Exception('Bad HTTP code Received : ' . $cr['httpCode']);
+        }
+        $r = json_decode($cr['response'], true, 512);
+        if ($r === false)
+            throw new Exception('Unexpected response returned by Hubic server on listFolder. Returned : ' . (string)$cr['response']);
+        if (!isset($r['answer']) || !isset($r['answer']['hubic']))
+            throw new Exception('Unexpected response returned by Hubic server on listFolder. Returned : ' . (string)$cr['response']);
+
+        // get fullCacheMode. If not fullCacheMode we are at root
+        $fullCacheMode = @$r['answer']['hubic']['fullCacheMode'];
+        $root = @$r['answer']['hubic']['list'][$container]['items'];
         if ($fullCacheMode) {
             if ($folder !== '/') {
                 $parts = explode('/', $folder);
@@ -325,15 +295,13 @@ class Phubic
         fclose($fp);
 
         if ($httpCode !== 200)
-            throw new Exception('Error uploading ' . $src . ' - Hubic HTTP response code : ' . $httpCode. ' - Json response : ' . $resp);
-
+            throw new Exception('Error uploading ' . $src . ' - Hubic HTTP response code : ' . $httpCode . ' - Json response : ' . $resp);
         $r = json_decode($resp);
-        #unset($resp);
+
+        #todo $r===false
 
         if (is_null($r->answer))
             throw new Exception('Error uploading ' . $src . ' - ' . $r->error->message);
-
-
         if (isset($r->answer->error) && $r->answer->error !== null) {
             throw new Exception('Error uploading ' . $src . ' - Hubic HTTP response code : ' . $httpCode, ' - Json response : ' . $resp);
         }
@@ -378,37 +346,19 @@ class Phubic
         $postName = $p[count($p) - 1];
         // folder
         $postFolder = substr($folder, 0, strlen($folder) - strlen($postName) - 1);
-
-        /* Init Curl */
-        $ch = curl_init("https://app.hubic.me/v2/actions/ajax/hubic-browser.php");
-        /* Cookies */
-        $cookiesFile = $this->getCookiesPathFile();
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        /* Post data */
+        // Post data
         $post = array('action' => 'create', 'folder' => $postFolder, 'container' => urlencode($container), 'name' => urlencode($postName));
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 
-        /* Verbosity (debug) */
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        /* Go go go !!! */
-        $r = curl_exec($ch);
-
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($httpCode !== 200) {
-            throw new Exception('Bad HTTP code returned by Hubic server on createFolder. Returned : ' . $httpCode . ' Expected : 200');
+        // Go
+        $cr = $this->curlPost('https://app.hubic.me/v2/actions/ajax/hubic-browser.php', $post);
+        if ($cr['httpCode'] !== 200) {
+            throw new Exception('Bad HTTP code returned by Hubic server on createFolder. Returned : ' . $cr['httpCode'] . ' Expected : 200');
         }
-
-        $t = json_decode($r);
+        $t = json_decode($cr['response']);
         if ($t === false) // not a json response as expected
-            throw new Exception('Unexpected response returned by Hubic server on createFolder. Returned : ' . (string)$r);
+            throw new Exception('Unexpected response returned by Hubic server on createFolder. Returned : ' . (string)$cr['response']);
         if (!isset($t->answer) || !isset($t->answer->status))
-            throw new Exception('Unexpected response returned by Hubic server on createFolder. Returned : ' . (string)$r);
+            throw new Exception('Unexpected response returned by Hubic server on createFolder. Returned : ' . (string)$cr['response']);
         if ($t->answer->status !== 201)
             throw new Exception('Bad response code returned by Hubic server on createFolder. Returned : ' . $t->answer->status . ' Expected : 201');
 
@@ -466,7 +416,7 @@ class Phubic
             $saveToFolder = substr($saveToFolder, 0, strlen($saveToFolder) - 1);
 
         // Get Hubic folder and name from $file
-        list($folder,$name)=$this->getFolderAndNameFromFile($file);
+        list($folder, $name) = $this->getFolderAndNameFromFile($file);
 
         // Get size of file
         $r = $this->listFolder($folder, $container);
@@ -525,7 +475,7 @@ class Phubic
         fclose($fp);
 
         if ($httpCode !== 200)
-            throw new Exception("Download Failed - Bad HTTP response from Hubic server - Expected 200 Recieved " . $httpCode);
+            throw new Exception("Download Failed - Bad HTTP response from Hubic server - Expected 200 Received " . $httpCode);
         if ($r !== true)
             throw new Exception("Download failed - Hubic response is false");
         return true;
@@ -539,7 +489,7 @@ class Phubic
      * @return bool
      * @throws Exception
      */
-    public function removeFile($file,$container='default')
+    public function removeFile($file, $container = 'default')
     {
         if (empty($file))
             throw new Exception('Method removeFile needs parameter $file');
@@ -555,17 +505,7 @@ class Phubic
         // type
         $type = $r[$name]['type'];
 
-        /* Init Curl */
-        $ch = curl_init("https://app.hubic.me/v2/actions/ajax/hubic-browser.php");
-        /* Cookies */
-        $cookiesFile = $this->getCookiesPathFile();
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        /* Header */
-        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        /* Post data */
+        // Post data
         $post = array(
             'action' => 'remove',
             'folder' => $folder,
@@ -574,29 +514,20 @@ class Phubic
             'isFile' => 'true',
             'type' => $type
         );
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-        /* Verbosity (debug) */
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        /* Go go go !!! */
-        $r = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
-        if($httpCode!==200)
-            throw new Exception("Remove Failed - Bad HTTP response from Hubic server - Expected 200 Recieved " . $httpCode);
-        $j=json_decode($r);
-        if($j===false)
-            throw new Exception("Remove Failed - Bad response from Hubic server - Expected JSON formated string but get " .(string)$r);
-        if(!isset($j->answer) ||!isset($j->answer->status))
-            throw new Exception("Remove Failed - Bad JSON response from Hubic server : " .(string)$r);
-        if((int)$j->answer->status!==204)
+        // Go
+        $cr = $this->curlPost('https://app.hubic.me/v2/actions/ajax/hubic-browser.php', $post);
+        if ($cr['httpCode'] !== 200)
+            throw new Exception("Remove Failed - Bad HTTP response from Hubic server - Expected 200 Received " . $cr['httpCode']);
+        $j = json_decode($cr['response']);
+        if ($j === false)
+            throw new Exception("Remove Failed - Bad response from Hubic server - Expected JSON formated string but get " . (string)$cr['response']);
+        if (!isset($j->answer) || !isset($j->answer->status))
+            throw new Exception("Remove Failed - Bad JSON response from Hubic server : " . (string)$cr['response']);
+        if ((int)$j->answer->status !== 204)
             throw new Exception('Bad response code returned by Hubic server on removeFile. Returned : ' . $j->answer->status . ' Expected : 204');
         return true;
     }
-
-
-
-
 
 
     /**
@@ -609,14 +540,14 @@ class Phubic
     {
         if (empty($file))
             throw new Exception('Method getFolderAndNameFromFile needs parameter $file');
-        $file=(string)$file;
+        $file = (string)$file;
         $p = explode('/', $file);
         if ($p[count($p) - 1] === '')
             array_pop($p);
         $name = $p[count($p) - 1];
         array_pop($p);
         $folder = implode('/', $p);
-        return array($folder,$name);
+        return array($folder, $name);
     }
 
 
@@ -666,4 +597,81 @@ class Phubic
     }
 
 
+    /***
+     *
+     * CURL METHODS
+     *
+     ***/
+
+    /**
+     * Performing a POST request via Curl
+     *
+     * @param string $url
+     * @param array $data
+     * @param array $xtraHeaders
+     * @param array $xtraOptions
+     * @return array
+     * @throws Exception
+     */
+    private function curlPost($url, $data = array(), $xtraHeaders = array(), $xtraOptions = array())
+    {
+        // url
+        if (empty($url))
+            throw new Exception('Parameter $url is not set');
+        $url = (string)$url;
+        // headers
+        if (!is_array($xtraHeaders))
+            throw new Exception('Parameter $xtraHeaders must be a array');
+        // data (POST parameters)
+        if (!is_array($data))
+            throw new Exception('Parameter $data must be a array');
+        // Curl extra options
+        if (!is_array($xtraOptions))
+            throw new Exception('Parameter $xtraOptions must be a array');
+
+        // Curl is avalaible ?
+        if (!function_exists('curl_init'))
+            throw new Exception('Curl seems to be not supported by your PHP version, checks : http://php.net/manual/en/curl.installation.php');
+
+        // init Curl
+        $c = curl_init($url);
+        // Verbosity (useful for debug)
+        curl_setopt($c, CURLOPT_VERBOSE, 0);
+        // Timeouts
+        curl_setopt($c, CURLOPT_TIMEOUT, 3600); // @todo read ini_get('max_execution_time');
+        curl_setopt($c, CURLOPT_CONNECTTIMEOUT, 10);
+        // Cookies
+        $cookiesFile = $this->getCookiesPathFile();
+        curl_setopt($c, CURLOPT_COOKIEFILE, $cookiesFile);
+        curl_setopt($c, CURLOPT_COOKIEJAR, $cookiesFile);
+        curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
+        // Header
+        $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
+        if ($xtraHeaders)
+            $headers = array_merge($headers, $xtraHeaders);
+        curl_setopt($c, CURLOPT_HTTPHEADER, $headers);
+        // Post data
+        curl_setopt($c, CURLOPT_POSTFIELDS, $data);
+        // xtraOptions
+        foreach ($xtraOptions as $curlOption => $value) {
+            try {
+                curl_setopt($c, strtoupper($curlOption), $value);
+            } catch (Exception $e) {
+                throw new Exception('Bad Curl option (or value) - Option : ' . $curlOption . ' Value : ' . (string)$value);
+            }
+        }
+
+        // Go go go !!!
+        try {
+            $r = curl_exec($c);
+            $httpCode = curl_getinfo($c, CURLINFO_HTTP_CODE);
+            $error = curl_error($c);
+            $errno = curl_errno($c);
+            $info = curl_getinfo($c);
+            curl_close($c);
+        } catch (Exception $e) {
+            throw new Exception('Curl failed : ' . $e->getMessage() . ' Trace : ' . $e->getTraceAsString());
+        }
+        return array('response' => $r, 'httpCode' => $httpCode, 'error' => $error, 'errno' => $errno, 'info' => $info);
+    }
 }
