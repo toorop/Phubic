@@ -530,6 +530,13 @@ class Phubic
     }
 
 
+    /***
+     *
+     * TOOLS
+     *
+     ***/
+
+
     /**
      * Return file name and directory path
      * @param string $file
