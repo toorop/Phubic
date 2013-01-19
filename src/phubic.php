@@ -20,6 +20,10 @@
 /*
  * Todo :
  *  method curlPost
+ *      - method curlPost
+ *      - publication
+ *      - create (recursively) folder on upload
+ *      - limit up/dowload speed
  *
  *
  *
