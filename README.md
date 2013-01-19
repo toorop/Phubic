@@ -44,7 +44,7 @@ $phubic->upload('/local/path/to/file','/hubic/path/');
 /*
  *  Download file
  */
-if($hubic->downloadFile('/hubic/path/to/file','/local/path/))
+if($hubic->downloadFile('/hubic/path/to/file','/local/path/'))
      echo "\n".$file.' downloaded !';
 
  /*
