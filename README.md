@@ -50,7 +50,7 @@ if($hubic->downloadFile('/hubic/path/to/file','/local/path/))
  /*
  *  Remove file
  */
-if($hubic->removeFile('/hubic/path/to/file'))
+if($hubic->removeFile('/hubic/path/to/file'));
      echo "\n".$file.' removed !';
 
 /*
