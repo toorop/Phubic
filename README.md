@@ -59,4 +59,12 @@ if($hubic->removeFile('/hubic/path/to/file'))
 $l=$phubic->listFolder('/hubic/path/');
 var_dump($l);
 
+/*
+ * Publish /hubic/path/to/fileOrFolder/to/publish for 5 days
+ */
+$r=$hubic->publish('/hubic/path/to/fileOrFolder/to/publish', 'My publish comment', 5);
+echo "You can find my publication at location : ".$r->url;
+
+
+
 ```

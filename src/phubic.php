@@ -366,27 +366,7 @@ class Phubic
     }
 
 
-    /**
-     * Check if a given folder exists
-     *
-     * @param string $folder
-     * @return bool
-     * @throws Exception
-     * @throws Exception
-     */
-    public function hubicFolderExists($folder = '')
-    {
-        if ($folder === '')
-            throw new Exception('Method hubicFolderExists needs parameter $folder');
-        try {
-            $r = $this->listFolder($folder);
-        } catch (Exception $e) {
-            if ($e->getCode() === 404)
-                return false;
-            throw $e;
-        }
-        return true;
-    }
+
 
 
     /**
@@ -529,6 +509,55 @@ class Phubic
         return true;
     }
 
+    /**
+     * Publish a file or a folder
+     *
+     * @param $fileOrFolder
+     * @param string $message
+     * @param int $duration in days
+     * @return mixed
+     * @throws Exception
+     */
+    public function publish($fileOrFolder,$message='',$duration=5){
+        if(empty($fileOrFolder))
+            throw new Exception('Method publish need $fileOrFolder');
+        if(strlen($message > 255)) // truncate at 255 char . Why ? Because you make too much noise !
+            $message=substr($message,0,255);
+        $duration=(int)$duration;
+        if($duration > 30) $duration=30;
+
+        // get info
+        $i=$this->getFileInfo($fileOrFolder);
+        // Already published ?
+        if(!is_null($i['publication']))
+            throw new Exception($fileOrFolder.' already published');
+        list($folder,$name)=$this->getFolderAndNameFromFile($fileOrFolder);
+
+        // Post
+        $post= array(
+            'action'=>'publish',
+            'folder'=>$folder,
+            'name'=>$name,
+            'container' => $i['container'],
+            'isFile' => $i['isFile'],
+            'duration' => $duration,
+            'message' => $message
+        );
+        // Go
+        $cr = $this->curlPost('https://app.hubic.me/v2/actions/ajax/hubic-browser.php', $post);
+        if ($cr['httpCode'] !== 200)
+            throw new Exception("Publish Failed - Bad HTTP response from Hubic server - Expected 200 Received " . $cr['httpCode']);
+        $j = json_decode($cr['response']);
+        if ($j === false)
+            throw new Exception("Publish Failed - Bad response from Hubic server - Expected JSON formated string but get " . (string)$cr['response']);
+        if (!isset($j->answer) || !isset($j->answer->status))
+            throw new Exception("Publish Failed - Bad JSON response from Hubic server : " . (string)$cr['response']);
+        if ((int)$j->answer->status !== 200)
+            throw new Exception('Bad response code returned by Hubic server on publish. Returned : ' . $j->answer->status . ' Expected : 200');
+        return $j->answer->publicationItem;
+    }
+
+
 
     /***
      *
@@ -556,6 +585,62 @@ class Phubic
         $folder = implode('/', $p);
         return array($folder, $name);
     }
+
+    /**
+     * Check if a given folder exists
+     *
+     * @param string $folder
+     * @return bool
+     * @throws Exception
+     * @throws Exception
+     */
+    public function hubicFolderExists($folder)
+    {
+        if (empty($folder))
+            throw new Exception('Method hubicFolderExists needs parameter $folder');
+        try {
+            $r = $this->listFolder($folder);
+        } catch (Exception $e) {
+            if ($e->getCode() === 404)
+                return false;
+            throw $e;
+        }
+        return true;
+    }
+
+
+    /**
+     * return file or folder info
+     *
+     * @param $f (file or folder)
+     * @return mixed
+     * @throws Exception
+     */
+    private function getFileInfo($f){
+        if(empty($f))
+            throw new Exception('Method getFileInfo needs paramerter $f');
+        // remove trailing slash if present
+        $file = (string)$f;
+        $p = explode('/', $f);
+        if ($p[count($p) - 1] === '')
+            array_pop($p);
+        $name = $p[count($p) - 1];
+        array_pop($p);
+        $parentFolder = implode('/', $p);
+        try {
+            $r = $this->listFolder($parentFolder);
+        } catch (Exception $e) {
+            if ($e->getCode() === 404)
+                throw new Exception("Folder $parentFolder doesn't exists");
+            throw $e;
+        }
+        if(!array_key_exists($name,$r))
+            throw new Exception($f.' not found on Hubic strorage');
+        return $r[$name];
+    }
+
+
+
 
 
     /**
