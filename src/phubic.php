@@ -239,6 +239,7 @@ class Phubic
      * @throws Exception
      *
      * @todo : create folder(s) if they don't exist
+     * @todo : $src as folder (not only a file)
      *
      *
      */
@@ -249,6 +250,11 @@ class Phubic
         $src = trim($src); // clean & cast
         $dest = trim($dest); // itoo
         if (!file_exists($src)) throw new Exception('File ' . $src . ' not found');
+
+        /* $src is Folder ? */
+
+
+
 
         /* Info on file to upload */
         // mimetype
@@ -599,7 +605,7 @@ class Phubic
         if (empty($folder))
             throw new Exception('Method hubicFolderExists needs parameter $folder');
         try {
-            $r = $this->listFolder($folder);
+            $this->listFolder($folder);
         } catch (Exception $e) {
             if ($e->getCode() === 404)
                 return false;
@@ -620,7 +626,7 @@ class Phubic
         if(empty($f))
             throw new Exception('Method getFileInfo needs paramerter $f');
         // remove trailing slash if present
-        $file = (string)$f;
+        $f = (string)$f;
         $p = explode('/', $f);
         if ($p[count($p) - 1] === '')
             array_pop($p);
