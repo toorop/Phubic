@@ -316,8 +316,8 @@ class Phubic
         $r = json_decode($resp);
 
         #todo $r===false
-        if($r===false)
-            throw new Exception('Error uploading ' . $src . ' - Unexpected Hubic response : JSON expected, recieved : '.(string)$resp);
+        if ($r === false)
+            throw new Exception('Error uploading ' . $src . ' - Unexpected Hubic response : JSON expected, recieved : ' . (string)$resp);
         if (is_null($r->answer))
             throw new Exception('Error uploading ' . $src . ' - ' . $r->error->message);
         if (isset($r->answer->error) && $r->answer->error !== null) {
@@ -382,33 +382,50 @@ class Phubic
 
 
     /**
-     * Download file from Hubic
+     * Download file or folder from Hubic
      *
-     * @param string $file
-     * @param string $saveToFolder
+     * @param string $src file or folder to download   from hubic
+     * @param string $dest local folder where you want $src to be downloaded
      * @param string $container
-     * @param bool $stream
+     * @param mixed $options
      * @return bool true
      * @throws Exception
      */
-    public function downloadFile($file = '', $saveToFolder = '', $container = 'default', $stream = false)
+    public function download($src = '', $dest = '', $container = 'default', $options = false)
     {
-        if ($file === '')
-            throw new Exception('Method downloadFile needs parameter $file');
+        if ($src === '')
+            throw new Exception('Method downloadFile needs parameter $src');
+        $src = $this->removeTrailingSlash($src);
+        $dest = $this->removeTrailingSlash($dest);
+        if ($dest === '')
+            throw new Exception('Method downloadFile needs parameter $dest');
+        if(!file_exists($dest))
+            if(is_dir(dirname($dest)))
+                mkdir($dest);
+            else
+                throw new Exception('Local folder ' . dirname($dest) . ' does not exists');
+        if (!is_dir($dest))
+            throw new Exception($dest . ' must be an existing (writable) folder not exists');
+        if (!is_writable($dest))
+            throw new Exception('Local folder ' . $dest . ' is not writable');
 
-        if ($saveToFolder === '')
-            throw new Exception('Method downloadFile needs parameter $saveAs');
-        if (!is_dir($saveToFolder))
-            throw new Exception('Folder ' . $saveToFolder . ' does not exists');
-        if (!is_writable($saveToFolder))
-            throw new Exception('Folder ' . $saveToFolder . ' is not writable');
-        // if last char is (back)slash remove it
-        $t = substr($saveToFolder, -1);
-        if (!ctype_alnum($t))
-            $saveToFolder = substr($saveToFolder, 0, strlen($saveToFolder) - 1);
 
+        $i = $this->getFileInfo($src);
+        // Folder
+        if ($i['isFile'] === false) {
+            // List folder
+            $ls=$this->listFolder($src);
+            foreach($ls as $name=>$data){
+                if($data['isFile']){
+                    $this->download($src.'/'.$name,$dest,$container,$options);
+                } else {
+                    $this->download($src.'/'.$name,$dest.'/'.$name,$container,$options);
+                }
+            }
+            return true;
+        }
         // Get Hubic folder and name from $file
-        list($folder, $name) = $this->getFolderAndNameFromPath($file);
+        list($folder, $name) = $this->getFolderAndNameFromPath($src);
 
         // Get size of file
         $r = $this->listFolder($folder, $container);
@@ -454,12 +471,14 @@ class Phubic
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
         /* save to */
-        $saveTo = $saveToFolder . '/' . $name;
+        $saveTo = $dest . '/' . $name;
         $fp = fopen($saveTo, 'w');
+        if($fp===false)
+            throw new Exception('Fail to open '.$saveTo.' for writting');
         curl_setopt($ch, CURLOPT_FILE, $fp);
 
         /* Verbosity (debug) */
-        curl_setopt($ch, CURLOPT_VERBOSE, 1);
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
         /* Go go go !!! */
         $r = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
