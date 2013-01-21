@@ -646,8 +646,13 @@ class Phubic
         return $r[$name];
     }
 
-
-
+    private function removeTrailingSlash($path)
+    {
+        $t = substr($path, strlen($path) - 1, 1);
+        if ($t === "/" || $t === "\\")
+            $path = substr($path, 0, strlen($path) - 1);
+        return $path;
+    }
 
 
     /**
