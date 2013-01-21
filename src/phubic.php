@@ -88,9 +88,9 @@ class Phubic
         $post = array('sign-in-email' => $this->hubicLogin, 'sign-in-password' => $this->hubicPasswd, 'sign-in-action' => 'true');
 
         // Curl
-        $cr=$this->curlPost('https://app.hubic.me/v2/actions/nasLogin.php',$post);
+        $cr = $this->curlPost('https://app.hubic.me/v2/actions/nasLogin.php', $post);
         if ($cr['error'])
-            throw new Exception('Login failed : '.$cr['$error']);
+            throw new Exception('Login failed : ' . $cr['$error']);
         // HTTP_CODE must be 302 (redirect to location: /v2/)
         if ($cr['httpCode'] !== 302)
             throw new Exception('Bad HTTP code returned by Hubic server on login. Returned : ' . $cr['httpCode'] . ' Expected : 302');
@@ -232,30 +232,41 @@ class Phubic
     /**
      * Upload
      *
-     * @param string $src
-     * @param string $dest
+     * @param string $src  file or folder to upload
+     * @param string $destPath  root path for destination.
      * @param string $container
      * @return bool
      * @throws Exception
      *
-     * @todo : create folder(s) if they don't exist
-     * @todo : $src as folder (not only a file)
+     * @todo : add BP limitation
+     * @todo : (pseudo) sync mode : if file exit and size===size continue
      *
      *
      */
-    public function upload($src = '', $dest = '', $container = 'default')
+    public function upload($src = '', $destPath = '', $container = 'default')
     {
-
-        if ($src === '' || $dest === '') throw new Exception("Upload need src and dest parameters");
+        if ($src === '' || $destPath === '') throw new Exception("Upload need src and dest parameters");
         $src = trim($src); // clean & cast
-        $dest = trim($dest); // itoo
-        if (!file_exists($src)) throw new Exception('File ' . $src . ' not found');
+        $src = $this->removeTrailingSlash($src);
+        if (!file_exists($src)) throw new Exception('File or folder ' . $src . ' not found');
 
-        /* $src is Folder ? */
+        $destPath = $this->removeTrailingSlash(trim($destPath)); // itoo
+        // destPath exists ? If Not create it
+        $this->createFolder($destPath, $container);
 
-
-
-
+        // $src is Folder ?
+        if (is_dir($src)) {
+            $ls = scandir($src);
+            foreach ($ls as $t) {
+                if ($t == '.' || $t == '..') continue;
+                if (is_dir($src . '/' . $t)) {
+                    $this->upload($src . '/' . $t, $destPath . '/' . $t, $container);
+                } else {
+                    $this->upload($src . '/' . $t, $destPath, $container);
+                }
+            }
+            return true;
+        }
         /* Info on file to upload */
         // mimetype
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -280,7 +291,7 @@ class Phubic
             'User-Agent: ' . urlencode($this->userAgent),
             'Origin: https://app.hubic.me',
             'X-File-Size :' . $size,
-            'X-File-Dest :' . urlencode($dest),
+            'X-File-Dest :' . urlencode($destPath),
             'X-Action: upload',
             'X-File-Container: ' . urlencode($container),
             'X-File-Name: ' . urlencode(basename($src)),
@@ -305,17 +316,16 @@ class Phubic
         $r = json_decode($resp);
 
         #todo $r===false
-
+        if($r===false)
+            throw new Exception('Error uploading ' . $src . ' - Unexpected Hubic response : JSON expected, recieved : '.(string)$resp);
         if (is_null($r->answer))
             throw new Exception('Error uploading ' . $src . ' - ' . $r->error->message);
         if (isset($r->answer->error) && $r->answer->error !== null) {
             throw new Exception('Error uploading ' . $src . ' - Hubic HTTP response code : ' . $httpCode, ' - Json response : ' . $resp);
         }
-
         // is filesize OK ? (=> simili integrity check)
         if ($r->answer->upload->size !== $size)
             throw new Exception('Integrity check failed, uploaded filesize (' . $r->answer->upload->size . ') does not match with original size (' . $size . ')');
-
         return true;
     }
 
@@ -336,7 +346,6 @@ class Phubic
         // clean ending / if present
         if (substr($folder, strlen($folder) - 1, 1) == '/')
             $folder = substr($folder, 0, strlen($folder) - 1);
-        ;
         if ($folder === '') return true;
         // exists ?
         if ($this->hubicFolderExists($folder)) return true;
@@ -372,9 +381,6 @@ class Phubic
     }
 
 
-
-
-
     /**
      * Download file from Hubic
      *
@@ -402,7 +408,7 @@ class Phubic
             $saveToFolder = substr($saveToFolder, 0, strlen($saveToFolder) - 1);
 
         // Get Hubic folder and name from $file
-        list($folder, $name) = $this->getFolderAndNameFromFile($file);
+        list($folder, $name) = $this->getFolderAndNameFromPath($file);
 
         // Get size of file
         $r = $this->listFolder($folder, $container);
@@ -482,7 +488,7 @@ class Phubic
         $file = trim($file);
 
         // get name and folder from $file
-        list($folder, $name) = $this->getFolderAndNameFromFile($file);
+        list($folder, $name) = $this->getFolderAndNameFromPath($file);
 
         // file type
         $r = $this->listFolder($folder, $container);
@@ -536,9 +542,9 @@ class Phubic
         // get info
         $i = $this->getFileInfo($fileOrFolder);
         // Already published ?
-        if(!is_null($i['publication']))
-            throw new Exception($fileOrFolder.' already published');
-        list($folder,$name)=$this->getFolderAndNameFromFile($fileOrFolder);
+        if (!is_null($i['publication']))
+            throw new Exception($fileOrFolder . ' already published');
+        list($folder, $name) = $this->getFolderAndNameFromPath($fileOrFolder);
 
         // Post
         $post = array(
@@ -574,16 +580,20 @@ class Phubic
 
     /**
      * Return file name and directory path
-     * @param string $file
+     *
+     * @param string $path
      * @return array
      * @throws Exception
+     *
+     *  was getFolderAndNameFromPath
+     *
      */
-    private function getFolderAndNameFromFile($file)
+    private function getFolderAndNameFromPath($path)
     {
-        if (empty($file))
-            throw new Exception('Method getFolderAndNameFromFile needs parameter $file');
-        $file = (string)$file;
-        $p = explode('/', $file);
+        if (empty($path))
+            throw new Exception('Method getFolderAndNameFromPath needs parameter $path');
+        $path = (string)$path;
+        $p = explode('/', $path);
         if ($p[count($p) - 1] === '')
             array_pop($p);
         $name = $p[count($p) - 1];
