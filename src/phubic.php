@@ -93,7 +93,7 @@ class Phubic
             throw new Exception('Login failed : '.$cr['$error']);
         // HTTP_CODE must be 302 (redirect to location: /v2/)
         if ($cr['httpCode'] !== 302)
-            throw new Exception('Bad HTTP code returned by Hubic server on login. Returned : ' . $cr['httpCode']  . ' Expected : 302');
+            throw new Exception('Bad HTTP code returned by Hubic server on login. Returned : ' . $cr['httpCode'] . ' Expected : 302');
 
         /* Cookie HUBIC_ACTION_RETURN ? */
         $cookies = $this->getCookies();
@@ -115,7 +115,7 @@ class Phubic
         /* Post data */
         $post = array('action' => 'unload');
         /* Go go go !!! */
-        $cr=$this->curlPost('https://app.hubic.me/v2/actions/ajax/logoff.php',$post);
+        $cr = $this->curlPost('https://app.hubic.me/v2/actions/ajax/logoff.php', $post);
         if ($cr['httpCode'] !== 200) throw new Exception('Logout Fail');
         @unlink($this->getCookiesPathFile());
     }
@@ -524,26 +524,27 @@ class Phubic
      * @return mixed
      * @throws Exception
      */
-    public function publish($fileOrFolder,$message='',$duration=5){
-        if(empty($fileOrFolder))
+    public function publish($fileOrFolder, $message = '', $duration = 5)
+    {
+        if (empty($fileOrFolder))
             throw new Exception('Method publish need $fileOrFolder');
-        if(strlen($message > 255)) // truncate at 255 char . Why ? Because you make too much noise !
-            $message=substr($message,0,255);
-        $duration=(int)$duration;
-        if($duration > 30) $duration=30;
+        if (strlen($message > 255)) // truncate at 255 char . Why ? Because you make too much noise !
+            $message = substr($message, 0, 255);
+        $duration = (int)$duration;
+        if ($duration > 30) $duration = 30;
 
         // get info
-        $i=$this->getFileInfo($fileOrFolder);
+        $i = $this->getFileInfo($fileOrFolder);
         // Already published ?
         if(!is_null($i['publication']))
             throw new Exception($fileOrFolder.' already published');
         list($folder,$name)=$this->getFolderAndNameFromFile($fileOrFolder);
 
         // Post
-        $post= array(
-            'action'=>'publish',
-            'folder'=>$folder,
-            'name'=>$name,
+        $post = array(
+            'action' => 'publish',
+            'folder' => $folder,
+            'name' => $name,
             'container' => $i['container'],
             'isFile' => $i['isFile'],
             'duration' => $duration,
@@ -562,7 +563,6 @@ class Phubic
             throw new Exception('Bad response code returned by Hubic server on publish. Returned : ' . $j->answer->status . ' Expected : 200');
         return $j->answer->publicationItem;
     }
-
 
 
     /***
@@ -622,8 +622,9 @@ class Phubic
      * @return mixed
      * @throws Exception
      */
-    private function getFileInfo($f){
-        if(empty($f))
+    private function getFileInfo($f)
+    {
+        if (empty($f))
             throw new Exception('Method getFileInfo needs paramerter $f');
         // remove trailing slash if present
         $f = (string)$f;
@@ -640,8 +641,8 @@ class Phubic
                 throw new Exception("Folder $parentFolder doesn't exists");
             throw $e;
         }
-        if(!array_key_exists($name,$r))
-            throw new Exception($f.' not found on Hubic strorage');
+        if (!array_key_exists($name, $r))
+            throw new Exception($f . ' not found on Hubic strorage');
         return $r[$name];
     }
 
