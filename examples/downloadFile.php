@@ -23,7 +23,7 @@ the License.
 
 $hubicLogin='Your login here';
 $hubicPasswd='Your hubic passwd here';
-$file='path to file (on Hubic) to download';
+$src='path or file (on Hubic) to download';
 $saveToFolder='path to your local folder (ie where to save your download)';
 
 
@@ -37,5 +37,5 @@ $tempDir='/tmp';
 require_once'../src/phubic.php';
 $config = array('login'=>$hubicLogin,'passwd'=>$hubicPasswd, 'tempDir'=>$tempDir);
 $hubic=new Phubic($config);
-if($hubic->downloadFile($file,$saveToFolder))
-    echo "\n".$file.' downloaded !';
+if($hubic->download($src,$saveToFolder))
+    echo "\n".$src.' downloaded !';
