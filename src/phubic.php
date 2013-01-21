@@ -42,7 +42,7 @@ class Phubic
     public function __construct($config = array())
     {
         if (!is_array($config)) throw new Exception('Contructor parameter $config must be a array. ' . gettype($config) . ' given');
-        if (!array_key_exists('login', $config) || !array_key_exists('login', $config) || !array_key_exists('tempDir', $config)) throw new Exception('Parameter $config must have at least "login", "passwd" and "tempDir" keys set');
+        if (!array_key_exists('login', $config) || !array_key_exists('passwd', $config) || !array_key_exists('tempDir', $config)) throw new Exception('Parameter $config must have at least "login", "passwd" and "tempDir" keys set');
 
         // Hubic login
         $this->hubicLogin = trim($config['login']); // Don't try to know why i "trim", you loose your time.
