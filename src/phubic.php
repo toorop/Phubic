@@ -42,19 +42,24 @@ class Phubic
     public function __construct($config = array())
     {
         if (!is_array($config)) throw new Exception('Contructor parameter $config must be a array. ' . gettype($config) . ' given');
-        if (!array_key_exists('login', $config) || !array_key_exists('passwd', $config) || !array_key_exists('tempDir', $config)) throw new Exception('Parameter $config must have at least "login", "passwd" and "tempDir" keys set');
+        if (!array_key_exists('login', $config) || !array_key_exists('passwd', $config)) throw new Exception('Parameter $config must have at least "login"and "passwd" keys set');
 
         // Hubic login
         $this->hubicLogin = trim($config['login']); // Don't try to know why i "trim", you loose your time.
         // Hubic passwd
         $this->hubicPasswd = trim($config['passwd']);
         // Temp dir with rw access (cookies)
-        $this->tempDir = trim($config['tempDir']);
+        if (isset($config['tempDir']))
+            $this->tempDir = trim($config['tempDir']);
+        else
+            $this->getTempDir();
+        $this->tempDir = $this->removeTrailingSlash($this->tempDir);
         if (!file_exists($this->tempDir))
             throw new Exception('tempDir parameter ' . $this->tempDir . ' is not an existing directory');
         if (!touch($this->tempDir . $this->getPathSeparator() . 'test'))
             throw new Exception('tempDir ' . $this->tempDir . ' is not writable');
         unlink($this->tempDir . $this->getPathSeparator() . 'test');
+
         // user agent
         $this->userAgent = 'Phubic (dev version)  more info : https://github.com/Toorop/Phubic';
         unset($config);
@@ -160,7 +165,6 @@ class Phubic
         }
         throw new Exception('No settings returned by Hubic server. Response(JSON) : ' . (string)$r);
     }
-
 
 
     /**
@@ -397,8 +401,8 @@ class Phubic
         $dest = $this->removeTrailingSlash($dest);
         if ($dest === '')
             throw new Exception('Method downloadFile needs parameter $dest');
-        if(!file_exists($dest))
-            if(is_dir(dirname($dest)))
+        if (!file_exists($dest))
+            if (is_dir(dirname($dest)))
                 mkdir($dest);
             else
                 throw new Exception('Local folder ' . dirname($dest) . ' does not exists');
@@ -412,12 +416,12 @@ class Phubic
         // Folder
         if ($i['isFile'] === false) {
             // List folder
-            $ls=$this->listFolder($src);
-            foreach($ls as $name=>$data){
-                if($data['isFile']){
-                    $this->download($src.'/'.$name,$dest,$container,$options);
+            $ls = $this->listFolder($src);
+            foreach ($ls as $name => $data) {
+                if ($data['isFile']) {
+                    $this->download($src . '/' . $name, $dest, $container, $options);
                 } else {
-                    $this->download($src.'/'.$name,$dest.'/'.$name,$container,$options);
+                    $this->download($src . '/' . $name, $dest . '/' . $name, $container, $options);
                 }
             }
             return true;
@@ -468,8 +472,8 @@ class Phubic
         /* save to */
         $saveTo = $dest . '/' . $name;
         $fp = fopen($saveTo, 'w');
-        if($fp===false)
-            throw new Exception('Fail to open '.$saveTo.' for writting');
+        if ($fp === false)
+            throw new Exception('Fail to open ' . $saveTo . ' for writting');
         curl_setopt($ch, CURLOPT_FILE, $fp);
 
         /* Verbosity (debug) */
@@ -503,7 +507,7 @@ class Phubic
 
         // get info
         $i = $this->getFileInfo($path);
-        list($folder,$name)=$this->getFolderAndNameFromPath($path);
+        list($folder, $name) = $this->getFolderAndNameFromPath($path);
 
         // file type
         $r = $this->listFolder($folder, $container);
@@ -721,6 +725,27 @@ class Phubic
 
         #if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') return '\\';
         #return '/';
+    }
+
+    /**
+     * @return string
+     * @throws Exception
+     */
+    private function getTempDir()
+    {
+        if ($this->tempDir)
+            return $this->tempDir;
+
+        if (!function_exists('sys_get_temp_dir')) {
+            if (!empty($_ENV['TMP'])) {
+                $this->tempDir = realpath($_ENV['TMP']);
+            } elseif (!empty($_ENV['TMPDIR'])) {
+                $this->tempDir = realpath($_ENV['TMPDIR']);
+            } elseif (!empty($_ENV['TEMP'])) {
+                $this->tempDir = realpath($_ENV['TEMP']);
+            } else throw new Exception('You must specify a temp dir in config array');
+        } else $this->tempDir = sys_get_temp_dir();
+        return $this->tempDir;
     }
 
 
