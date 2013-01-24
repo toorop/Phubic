@@ -161,6 +161,8 @@ class Phubic
         throw new Exception('No settings returned by Hubic server. Response(JSON) : ' . (string)$r);
     }
 
+
+
     /**
      * List folder
      *
@@ -435,7 +437,6 @@ class Phubic
         // sessionHash is needed
         $s = $this->getSettings();
         $url = 'https://app.hubic.me/v2/actions/ajax/hubic-browser.php';
-
         // GET parameters as array for better readability
         $get = array(
             'action' => 'download',
@@ -489,26 +490,25 @@ class Phubic
     /**
      * Remove file
      *
-     * @param $file
+     * @param string $path
      * @param string $container
      * @return bool
      * @throws Exception
      */
-    public function removeFile($file, $container = 'default')
+    public function remove($path, $container = 'default')
     {
-        if (empty($file))
-            throw new Exception('Method removeFile needs parameter $file');
-        $file = trim($file);
+        if (empty($path))
+            throw new Exception('Method removeFile needs parameter $path');
+        $path = $this->removeTrailingSlash($path);
 
-        // get name and folder from $file
-        list($folder, $name) = $this->getFolderAndNameFromPath($file);
+        // get info
+        $i = $this->getFileInfo($path);
+        list($folder,$name)=$this->getFolderAndNameFromPath($path);
 
         // file type
         $r = $this->listFolder($folder, $container);
         if (!array_key_exists($name, $r))
-            throw new Exception('File ' . $file . ' not found on your Hubic.');
-        // type
-        $type = $r[$name]['type'];
+            throw new Exception('File ' . $path . ' not found on your Hubic.');
 
         // Post data
         $post = array(
@@ -516,8 +516,8 @@ class Phubic
             'folder' => $folder,
             'container' => $container,
             'name' => $name,
-            'isFile' => 'true',
-            'type' => $type
+            'isFile' => $r[$name]['isFile'],
+            'type' => $r[$name]['type']
         );
 
         // Go
