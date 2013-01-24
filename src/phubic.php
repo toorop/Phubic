@@ -55,12 +55,8 @@ class Phubic
         if (!touch($this->tempDir . $this->getPathSeparator() . 'test'))
             throw new Exception('tempDir ' . $this->tempDir . ' is not writable');
         unlink($this->tempDir . $this->getPathSeparator() . 'test');
-
         // user agent
-        # $this->userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.101 Safari/537.11';
         $this->userAgent = 'Phubic (dev version)  more info : https://github.com/Toorop/Phubic';
-
-
         unset($config);
 
         /* Login */
