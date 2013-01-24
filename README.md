@@ -42,16 +42,28 @@ var_dump($settings);
 $phubic->upload('/local/path/to/file','/hubic/path/');
 
 /*
+ * Upload folder recursively
+ */
+$phubic->upload('/local/path/to/folder','/hubic/path/');
+
+/*
  *  Download file
  */
-if($hubic->download('/hubic/path/or/file/to/download','/local/path/'))
+if($hubic->download('/hubic/path/of/file/to/download','/local/path/'))
      echo "\n".$file.' downloaded !';
 
- /*
- *  Remove file
+/*
+ *  Download folder (recursively)
  */
-if($hubic->removeFile('/hubic/path/to/file'));
-     echo "\n".$file.' removed !';
+if($hubic->download('/hubic/path/of/folder/to/download','/local/path/'))
+     echo "\n".$file.' downloaded !';
+
+
+ /*
+ *  Remove file or folder
+ */
+if($hubic->remove('/hubic/path/to/file/or/folder/to/remove'));
+     echo "\n removed !';
 
 /*
  * List Folder
@@ -64,7 +76,5 @@ var_dump($l);
  */
 $r=$hubic->publish('/hubic/path/to/fileOrFolder/to/publish', 'My publish comment', 5);
 echo "You can find my publication at location : ".$r->url;
-
-
 
 ```
