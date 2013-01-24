@@ -434,8 +434,6 @@ class Phubic
         $key = (int)round(mt_rand() * time());
         // sessionHash is needed
         $s = $this->getSettings();
-
-        // https://app.hubic.me/v2/actions/ajax/hubic-browser.php?action=download&folder=/toorop/Tests/Folder2/Tests&container=default&name=mod_fcgid.c&key=126146434820&isFile=true&size=41777&type=&secret=113d0235ef265d1b239a4a3be3846ea3f3a47dcd1af67f14068b36e80225dafe
         $url = 'https://app.hubic.me/v2/actions/ajax/hubic-browser.php';
 
         // GET parameters as array for better readability
