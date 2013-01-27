@@ -273,7 +273,7 @@ class Phubic
         $size = filesize($src);
 
         /* Transfert */
-        $url = "http://app.hubic.me/v2/actions/ajax/hubic-browser.php";
+        $url = "https://app.hubic.me/v2/actions/ajax/hubic-browser.php";
         $fp = fopen($src, "r");
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
