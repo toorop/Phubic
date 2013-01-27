@@ -19,13 +19,8 @@
 
 /*
  * Todo :
- *      - method curlPost
- *      - publication
- *      - create (recursively) folder on upload
+ *      - publication  unpublish
  *      - limit up/dowload speed
- *
- *
- *
  */
 
 class Phubic
