@@ -86,7 +86,7 @@ class Phubic
         // Curl
         $cr = $this->curlPost('https://app.hubic.me/v2/actions/nasLogin.php', $post);
         if ($cr['error'])
-            throw new Exception('Login failed : ' . $cr['$error']);
+            throw new Exception('Login failed : ' . $cr['error']);
         // HTTP_CODE must be 302 (redirect to location: /v2/)
         if ($cr['httpCode'] !== 302)
             throw new Exception('Bad HTTP code returned by Hubic server on login. Returned : ' . $cr['httpCode'] . ' Expected : 302');
