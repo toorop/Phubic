@@ -124,7 +124,6 @@ class Phubic
      */
     public function getSettings()
     {
-
         if ($this->hubicSettings)
             return $this->hubicSettings;
 
@@ -140,6 +139,7 @@ class Phubic
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         /* Verbosity (debug) */
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         /* Go go go !!! */
         $r = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -278,6 +278,7 @@ class Phubic
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
         curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         // Cookies
         $cookiesFile = $this->getCookiesPathFile();
         curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
@@ -460,6 +461,7 @@ class Phubic
         curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiesFile);
         curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiesFile);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         /* Header */
         $headers = array('User-Agent: ' . $this->userAgent, 'Origin: https://app.hubic.me');
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -581,6 +583,7 @@ class Phubic
             throw new Exception('Bad response code returned by Hubic server on publish. Returned : ' . $j->answer->status . ' Expected : 200');
         return $j->answer->publicationItem;
     }
+
 
 
     /***
@@ -782,6 +785,8 @@ class Phubic
 
         // init Curl
         $c = curl_init($url);
+        //
+        curl_setopt($c, CURLOPT_SSL_VERIFYPEER, false);
         // Verbosity (useful for debug)
         curl_setopt($c, CURLOPT_VERBOSE, 0);
         // Timeouts
