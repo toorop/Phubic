@@ -1,7 +1,16 @@
 Phubic
 ========
-
 Phubic is a PHP helper library for [OVH Hubic Cloud storage service](https://app.hubic.me/, "hubic @ OVH").
+
+WARNING : 
+========
+Since the new - new new - update on Hubic this library no longer works.
+Check my [OVH PHP SDK project](https://github.com/Toorop/ovh-sdk-php, "OVH SDK PHP") as alternative (Hubic API should arrive soon...)
+
+
+
+
+
 
 Read before anything else
 ------------
